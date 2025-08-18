@@ -1,57 +1,150 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 )
 
 var execCommand = exec.Command
 var lookPath = exec.LookPath
+var sendResponse = func(response JSONRPCResponse) {
+	responseBytes, _ := json.Marshal(response)
+	fmt.Println(string(responseBytes))
+}
 
 func main() {
-	http.HandleFunc("/", rootHandler)
-	http.HandleFunc("/devices", devicesHandler)
-	log.Println("Server starting on port 8080...")
-	log.Fatal(http.ListenAndServe(":8080", nil))
-}
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" {
+			continue
+		}
 
-func rootHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	root := NewRoot()
-	json.NewEncoder(w).Encode(root)
-}
+		var request JSONRPCRequest
+		if err := json.Unmarshal([]byte(line), &request); err != nil {
+			sendError(nil, -32700, "Parse error", nil)
+			continue
+		}
 
-func devicesHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
+		handleRequest(request)
 	}
 
-	var requestBody map[string]interface{}
-	err := json.NewDecoder(r.Body).Decode(&requestBody)
-	if err != nil {
-		http.Error(w, "Failed to decode request body", http.StatusBadRequest)
-		return
+	if err := scanner.Err(); err != nil {
+		log.Fatal("Error reading from stdin:", err)
+	}
+}
+
+func handleRequest(request JSONRPCRequest) {
+	switch request.Method {
+	case "initialize":
+		handleInitialize(request)
+	case "tools/list":
+		handleToolsList(request)
+	case "tools/call":
+		handleToolsCall(request)
+	default:
+		sendError(request.ID, -32601, "Method not found", nil)
+	}
+}
+
+func handleInitialize(request JSONRPCRequest) {
+	response := JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      request.ID,
+		Result: InitializeResult{
+			ProtocolVersion: "2024-11-05",
+			Capabilities: ServerCapabilities{
+				Tools: &ToolsCapability{
+					ListChanged: true,
+				},
+			},
+			ServerInfo: ServerInfo{
+				Name:    "android-devices-mcp-server",
+				Version: "1.0.0",
+			},
+		},
+	}
+	sendResponse(response)
+}
+
+func handleToolsList(request JSONRPCRequest) {
+	tools := []Tool{
+		{
+			Name:        "get_android_devices",
+			Description: "Get a list of connected Android devices and emulators",
+			InputSchema: map[string]interface{}{
+				"type":       "object",
+				"properties": map[string]interface{}{},
+			},
+		},
 	}
 
-	toolName, ok := requestBody["tool"].(string)
-	if !ok || toolName != "get_android_devices" {
-		http.Error(w, "Invalid tool name", http.StatusBadRequest)
+	response := JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      request.ID,
+		Result: ToolsListResult{
+			Tools: tools,
+		},
+	}
+	sendResponse(response)
+}
+
+func handleToolsCall(request JSONRPCRequest) {
+	var params ToolsCallParams
+	if request.Params != nil {
+		paramsBytes, _ := json.Marshal(request.Params)
+		if err := json.Unmarshal(paramsBytes, &params); err != nil {
+			sendError(request.ID, -32602, "Invalid params", nil)
+			return
+		}
+	}
+
+	if params.Name != "get_android_devices" {
+		sendError(request.ID, -32602, "Unknown tool: "+params.Name, nil)
 		return
 	}
 
 	devices, err := getDeviceList()
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to get device list: %v", err), http.StatusInternalServerError)
+		sendError(request.ID, -32603, "Internal error", map[string]interface{}{
+			"error": err.Error(),
+		})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(devices)
+	devicesJSON, _ := json.Marshal(devices)
+	response := JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      request.ID,
+		Result: ToolsCallResult{
+			Content: []ContentItem{
+				{
+					Type: "text",
+					Text: string(devicesJSON),
+				},
+			},
+			IsError: false,
+		},
+	}
+	sendResponse(response)
+}
+
+func sendError(id interface{}, code int, message string, data interface{}) {
+	response := JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      id,
+		Error: &JSONRPCError{
+			Code:    code,
+			Message: message,
+			Data:    data,
+		},
+	}
+	sendResponse(response)
 }
 
 func getDeviceList() ([]Device, error) {
