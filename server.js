@@ -1,12 +1,36 @@
+import { createInterface } from 'readline';
+import { exec } from 'child_process';
+import { z } from 'zod';
 
-const readline = require('readline');
-const { exec } = require('child_process');
-
-const rl = readline.createInterface({
+const rl = createInterface({
   input: process.stdin,
   output: process.stdout,
   terminal: false
 });
+
+const tools = {
+  get_android_devices: {
+    description: 'Get a list of connected Android devices and emulators',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+    execute: getAndroidDevices,
+  },
+  get_android_screen: {
+    description: 'Capture a screenshot from an Android device',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        device: {
+          type: 'string',
+          description: "Device name (e.g., 'emulator-5554'). If not provided, uses the first available device.",
+        },
+      },
+    },
+    execute: getAndroidScreen,
+  },
+};
 
 rl.on('line', (line) => {
   try {
@@ -60,54 +84,36 @@ function handleInitialize(request) {
 }
 
 function handleToolsList(request) {
+  const toolList = Object.entries(tools).map(([name, tool]) => ({
+    name,
+    description: tool.description,
+    inputSchema: tool.inputSchema,
+  }));
+
   sendResponse({
     jsonrpc: '2.0',
     id: request.id,
     result: {
-      tools: [
-        {
-          name: 'get_android_devices',
-          description: 'Get a list of connected Android devices and emulators',
-          inputSchema: {
-            type: 'object',
-            properties: {}
-          }
-        },
-        {
-          name: 'get_android_screen',
-          description: 'Capture a screenshot from an Android device',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              device: {
-                type: 'string',
-                description: "Device name (e.g., 'emulator-5554'). If not provided, uses the first available device."
-              }
-            }
-          }
-        }
-      ]
+      tools: toolList,
     }
   });
 }
 
 function handleToolsCall(request) {
   const { name, arguments: args } = request.params;
+  const tool = tools[name];
 
-  switch (name) {
-    case 'get_android_devices':
-      getAndroidDevices(request.id);
-      break;
-    case 'get_android_screen':
-      getAndroidScreen(request.id, args.device);
-      break;
-    default:
-      sendResponse({
-        jsonrpc: '2.0',
-        id: request.id,
-        error: { code: -32601, message: 'Tool not found' }
-      });
+  if (!tool) {
+    sendResponse({
+      jsonrpc: '2.0',
+      id: request.id,
+      error: { code: -32601, message: 'Tool not found' }
+    });
+    return;
   }
+
+  // We are not using zod anymore for parsing, so we can remove this try/catch block
+  tool.execute(request.id, args || {});
 }
 
 function getAndroidDevices(id) {
@@ -124,9 +130,9 @@ function getAndroidDevices(id) {
     const devices = stdout.trim().split('\n').slice(1).map(line => {
       const parts = line.trim().split(/\s+/);
       const device = parts[0];
-      const model = parts.find(p => p.startsWith('model:')).replace('model:', '');
-      const product = parts.find(p => p.startsWith('product:')).replace('product:', '');
-      const transport_id = parts.find(p => p.startsWith('transport_id:')).replace('transport_id:', '');
+      const model = parts.find(p => p.startsWith('model:'))?.replace('model:', '') || '';
+      const product = parts.find(p => p.startsWith('product:'))?.replace('product:', '') || '';
+      const transport_id = parts.find(p => p.startsWith('transport_id:'))?.replace('transport_id:', '') || '';
       return { name: product, device, model, run_status: parts[1], transport_id };
     });
 
@@ -144,7 +150,7 @@ function getAndroidDevices(id) {
   });
 }
 
-function getAndroidScreen(id, device) {
+function getAndroidScreen(id, { device }) {
     const deviceIdentifier = device ? `-s ${device}` : '';
     exec(`adb ${deviceIdentifier} shell screencap -p`, { encoding: 'binary', maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
         if (error) {

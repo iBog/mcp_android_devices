@@ -2,9 +2,9 @@
   "name": "mcp_android_devices",
   "version": "1.0.0",
   "description": "A Model Context Protocol (MCP) server that provides information about connected Android devices and emulators. This server implements the official MCP specification using JSON-RPC 2.0 over stdio transport.",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -14,9 +14,12 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/iBog/mcp_android_devices/issues"
   },
-  "homepage": "https://github.com/iBog/mcp_android_devices#readme"
+  "homepage": "https://github.com/iBog/mcp_android_devices#readme",
+  "dependencies": {
+    "zod": "^4.1.1"
+  }
 }

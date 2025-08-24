@@ -41,7 +41,7 @@ npm install
        "mcp": {
            "servers": {
                "android_devices": {
-                   "command": "node /path/to/your/project/index.js"
+                   "command": "node /Users/ibog/Work/go/mcp_android_devices/server.js"
                }
            }
        }
@@ -64,7 +64,7 @@ npm install
 **Common Issues:**
 
 1. **Server not found:**
-   - Verify the path to `index.js` is correct
+   - Verify the path to `server.js` is correct
    - Use absolute paths instead of relative paths
 
 2. **ADB not found:**
@@ -94,7 +94,7 @@ Add to your `claude_desktop_config.json`:
 {
     "mcpServers": {
         "android_devices": {
-            "command": "node /path/to/your/project/index.js"
+            "command": "node /path/to/your/project/server.js"
         }
     }
 }
@@ -109,31 +109,31 @@ The server communicates via JSON-RPC 2.0 over stdin/stdout. Here are some test e
 1. **Initialize the connection:**
 
    ```bash
-   echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}' | node index.js
+   echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}' | node server.js
    ```
 
 2. **List available tools:**
 
    ```bash
-   echo '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | node index.js
+   echo '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | node server.js
    ```
 
 3. **Call the get_android_devices tool:**
 
    ```bash
-   echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_android_devices","arguments":{}}}' | node index.js
+   echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_android_devices","arguments":{}}}' | node server.js
    ```
 
 4. **Capture a screenshot from an Android device:**
 
    ```bash
-   echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_android_screen","arguments":{"device":"emulator-5554"}}}' | node index.js
+   echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_android_screen","arguments":{"device":"emulator-5554"}}}' | node server.js
    ```
 
    Or capture from the first available device:
 
    ```bash
-   echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_android_screen","arguments":{}}}' | node index.js
+   echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_android_screen","arguments":{}}}' | node server.js
    ```
 
 ## MCP Protocol Examples
@@ -234,6 +234,6 @@ The server communicates via JSON-RPC 2.0 over stdin/stdout. Here are some test e
 
 ## Requirements
 
-- Node.js v14 or later
+- Node.js v14 or later (ES Module support)
 - Android SDK with `adb` in PATH
 - Connected Android devices or running emulators
