@@ -19,7 +19,5 @@
     "url": "https://github.com/iBog/mcp_android_devices/issues"
   },
   "homepage": "https://github.com/iBog/mcp_android_devices#readme",
-  "dependencies": {
-    "zod": "^4.1.1"
-  }
+  "dependencies": {}
 }

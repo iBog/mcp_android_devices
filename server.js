@@ -1,6 +1,5 @@
 import { createInterface } from 'readline';
 import { exec } from 'child_process';
-import { z } from 'zod';
 
 const rl = createInterface({
   input: process.stdin,
@@ -39,6 +38,7 @@ rl.on('line', (line) => {
   } catch (e) {
     sendResponse({
       jsonrpc: '2.0',
+      id: null,
       error: { code: -32700, message: 'Parse error' }
     });
   }
@@ -112,7 +112,6 @@ function handleToolsCall(request) {
     return;
   }
 
-  // We are not using zod anymore for parsing, so we can remove this try/catch block
   tool.execute(request.id, args || {});
 }
 
@@ -181,5 +180,5 @@ function getAndroidScreen(id, { device }) {
 
 function sendResponse(response) {
   const responseString = JSON.stringify(response);
-  process.stdout.write(`Content-Length: ${Buffer.byteLength(responseString)}\r\n\r\n${responseString}`);
+  process.stdout.write(responseString + '\n');
 }

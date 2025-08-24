@@ -5,7 +5,7 @@ A Model Context Protocol (MCP) server that provides information about connected 
 ## Features
 
 - Lists all connected Android devices and emulators
-- Provides detailed device information (name, model, architecture, Android version, SDK level)
+- Provides detailed device information (name, model, run status, transport ID)
 - Captures screenshots from Android devices and emulators
 - Returns screenshots as Base64-encoded PNG images
 - Follows the official MCP protocol specification
@@ -17,9 +17,7 @@ A Model Context Protocol (MCP) server that provides information about connected 
 
 ### Install Dependencies
 
-```bash
-npm install
-```
+Since there are no dependencies, no installation is needed. The server uses only Node.js built-in modules.
 
 ### Configure with MCP Clients
 
@@ -48,7 +46,7 @@ npm install
    }
    ```
 
-   **Note:** Replace `/path/to/your/project/` with the actual absolute path to the project directory.
+   **Note:** The path above is already set to the correct absolute path for this project.
 
 4. **Save and restart Cursor IDE**
 
@@ -94,13 +92,13 @@ Add to your `claude_desktop_config.json`:
 {
     "mcpServers": {
         "android_devices": {
-            "command": "node /path/to/your/project/server.js"
+            "command": "node /Users/ibog/Work/go/mcp_android_devices/server.js"
         }
     }
 }
-
-   **Note:** Replace `/path/to/your/project/` with the actual absolute path to the project directory.
 ```
+
+   **Note:** Update the path above to match your actual installation directory.
 
 ### Test the server manually
 
@@ -203,7 +201,7 @@ The server communicates via JSON-RPC 2.0 over stdin/stdout. Here are some test e
         "content": [
             {
                 "type": "text",
-                "text": "[{\"name\":\"Pixel 2 API 30\",\"device\":\"emulator-5554\",\"model\":\"sdk_gphone_x86\",\"arch\":\"x86\",\"android_version\":\"11\",\"sdk_level\":\"30\",\"run_status\":\"device\"}]"
+                "text": "[{\"name\":\"sdk_gphone64_arm64\",\"device\":\"emulator-5554\",\"model\":\"sdk_gphone64_arm64\",\"run_status\":\"device\",\"transport_id\":\"1\"}]"
             }
         ],
         "isError": false
