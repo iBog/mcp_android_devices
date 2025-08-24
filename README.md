@@ -15,90 +15,44 @@ A Model Context Protocol (MCP) server that provides information about connected 
 
 ## How to use
 
-### Build the server
+### Install Dependencies
 
 ```bash
-go build
+npm install
 ```
 
 ### Configure with MCP Clients
 
 #### Cursor IDE - Step by Step Installation
 
-1. **Build the server executable:**
-
-   ```bash
-   go build
-   ```
-
-2. **Copy the executable to a permanent location:**
-
-   ```bash
-   # Windows
-   mkdir C:\tools\mcp_servers
-   copy mcp_android_devices.exe C:\tools\mcp_servers\
-   
-   # macOS/Linux
-   sudo mkdir -p /usr/local/bin/mcp_servers
-   sudo cp mcp_android_devices /usr/local/bin/mcp_servers/
-   ```
-
-3. **Open Cursor IDE Settings:**
+1. **Open Cursor IDE Settings:**
    - Press `Ctrl+,` (Windows/Linux) or `Cmd+,` (macOS) to open Settings
    - Or go to `File > Preferences > Settings`
 
-4. **Navigate to MCP Settings:**
+2. **Navigate to MCP Settings:**
    - In the Settings search bar, type "MCP"
    - Look for "MCP Servers" section
    - Click "Edit in settings.json" or find the MCP configuration area
 
-5. **Add the MCP server configuration:**
-
-   **For Windows:**
+3. **Add the MCP server configuration:**
 
    ```json
    {
        "mcp": {
            "servers": {
                "android_devices": {
-                   "command": "C:\\tools\\mcp_servers\\mcp_android_devices.exe"
+                   "command": "node /path/to/your/project/index.js"
                }
            }
        }
    }
    ```
 
-   **For macOS/Linux:**
+   **Note:** Replace `/path/to/your/project/` with the actual absolute path to the project directory.
 
-   ```json
-   {
-       "mcp": {
-           "servers": {
-               "android_devices": {
-                   "command": "/usr/local/bin/mcp_servers/mcp_android_devices"
-               }
-           }
-       }
-   }
-   ```
+4. **Save and restart Cursor IDE**
 
-6. **Alternative: Use relative path (if keeping in project folder):**
-
-   ```json
-   {
-       "mcp": {
-           "servers": {
-               "android_devices": {
-                   "command": "./mcp_android_devices"
-               }
-           }
-       }
-   }
-   ```
-
-7. **Save and restart Cursor IDE**
-
-8. **Verify installation:**
+5. **Verify installation:**
    - Open Cursor IDE
    - Look for MCP status indicator in the status bar
    - Try asking: "List my Android devices" or "Show connected Android emulators"
@@ -110,9 +64,8 @@ go build
 **Common Issues:**
 
 1. **Server not found:**
-   - Verify the executable path is correct
+   - Verify the path to `index.js` is correct
    - Use absolute paths instead of relative paths
-   - Check file permissions (executable bit on Unix systems)
 
 2. **ADB not found:**
    - Ensure Android SDK is installed
@@ -121,7 +74,6 @@ go build
 
 3. **Permission issues (Windows):**
    - Run Cursor IDE as administrator (temporarily)
-   - Or move executable to a user-accessible directory
 
 4. **Settings not taking effect:**
    - Completely restart Cursor IDE
@@ -142,10 +94,12 @@ Add to your `claude_desktop_config.json`:
 {
     "mcpServers": {
         "android_devices": {
-            "command": "./mcp_android_devices"
+            "command": "node /path/to/your/project/index.js"
         }
     }
 }
+
+   **Note:** Replace `/path/to/your/project/` with the actual absolute path to the project directory.
 ```
 
 ### Test the server manually
@@ -155,31 +109,31 @@ The server communicates via JSON-RPC 2.0 over stdin/stdout. Here are some test e
 1. **Initialize the connection:**
 
    ```bash
-   echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}' | ./mcp_android_devices
+   echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}' | node index.js
    ```
 
 2. **List available tools:**
 
    ```bash
-   echo '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | ./mcp_android_devices
+   echo '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | node index.js
    ```
 
 3. **Call the get_android_devices tool:**
 
    ```bash
-   echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_android_devices","arguments":{}}}' | ./mcp_android_devices
+   echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_android_devices","arguments":{}}}' | node index.js
    ```
 
 4. **Capture a screenshot from an Android device:**
 
    ```bash
-   echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_android_screen","arguments":{"device":"emulator-5554"}}}' | ./mcp_android_devices
+   echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_android_screen","arguments":{"device":"emulator-5554"}}}' | node index.js
    ```
 
    Or capture from the first available device:
 
    ```bash
-   echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_android_screen","arguments":{}}}' | ./mcp_android_devices
+   echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_android_screen","arguments":{}}}' | node index.js
    ```
 
 ## MCP Protocol Examples
@@ -280,6 +234,6 @@ The server communicates via JSON-RPC 2.0 over stdin/stdout. Here are some test e
 
 ## Requirements
 
-- Go 1.19 or later
+- Node.js v14 or later
 - Android SDK with `adb` in PATH
 - Connected Android devices or running emulators
