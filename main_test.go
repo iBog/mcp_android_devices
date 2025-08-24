@@ -94,13 +94,20 @@ func TestMCPToolsList(t *testing.T) {
 		t.Fatal("expected ToolsListResult")
 	}
 
-	if len(result.Tools) != 1 {
-		t.Errorf("expected 1 tool, got %d", len(result.Tools))
+	if len(result.Tools) != 2 {
+		t.Errorf("expected 2 tools, got %d", len(result.Tools))
 	}
 
-	tool := result.Tools[0]
-	if tool.Name != "get_android_devices" {
-		t.Errorf("expected tool name get_android_devices, got %s", tool.Name)
+	// Check first tool
+	tool1 := result.Tools[0]
+	if tool1.Name != "get_android_devices" {
+		t.Errorf("expected first tool name get_android_devices, got %s", tool1.Name)
+	}
+
+	// Check second tool
+	tool2 := result.Tools[1]
+	if tool2.Name != "get_android_screen" {
+		t.Errorf("expected second tool name get_android_screen, got %s", tool2.Name)
 	}
 }
 

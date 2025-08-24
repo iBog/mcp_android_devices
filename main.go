@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -82,6 +83,19 @@ func handleToolsList(request JSONRPCRequest) {
 				"properties": map[string]interface{}{},
 			},
 		},
+		{
+			Name:        "get_android_screen",
+			Description: "Capture a screenshot from an Android device",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"device": map[string]interface{}{
+						"type":        "string",
+						"description": "Device name/serial (e.g., 'emulator-5554'). If not provided, uses the first available device.",
+					},
+				},
+			},
+		},
 	}
 
 	response := JSONRPCResponse{
@@ -104,11 +118,17 @@ func handleToolsCall(request JSONRPCRequest) {
 		}
 	}
 
-	if params.Name != "get_android_devices" {
+	switch params.Name {
+	case "get_android_devices":
+		handleGetDevices(request, params)
+	case "get_android_screen":
+		handleGetScreen(request, params)
+	default:
 		sendError(request.ID, -32602, "Unknown tool: "+params.Name, nil)
-		return
 	}
+}
 
+func handleGetDevices(request JSONRPCRequest, params ToolsCallParams) {
 	devices, err := getDeviceList()
 	if err != nil {
 		sendError(request.ID, -32603, "Internal error", map[string]interface{}{
@@ -126,6 +146,62 @@ func handleToolsCall(request JSONRPCRequest) {
 				{
 					Type: "text",
 					Text: string(devicesJSON),
+				},
+			},
+			IsError: false,
+		},
+	}
+	sendResponse(response)
+}
+
+func handleGetScreen(request JSONRPCRequest, params ToolsCallParams) {
+	deviceName := ""
+	if params.Arguments != nil {
+		if device, exists := params.Arguments["device"]; exists {
+			if deviceStr, ok := device.(string); ok {
+				deviceName = deviceStr
+			}
+		}
+	}
+
+	// If no device specified, use the first available device
+	if deviceName == "" {
+		devices, err := getDeviceList()
+		if err != nil {
+			sendError(request.ID, -32603, "Internal error", map[string]interface{}{
+				"error": "Failed to get device list: " + err.Error(),
+			})
+			return
+		}
+
+		if len(devices) == 0 {
+			sendError(request.ID, -32603, "Internal error", map[string]interface{}{
+				"error": "No Android devices found",
+			})
+			return
+		}
+
+		deviceName = devices[0].Device
+	}
+
+	// Capture screenshot
+	base64Data, err := captureScreenshot(deviceName)
+	if err != nil {
+		sendError(request.ID, -32603, "Internal error", map[string]interface{}{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	response := JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      request.ID,
+		Result: ToolsCallResult{
+			Content: []ContentItem{
+				{
+					Type:     "image",
+					Data:     base64Data,
+					MimeType: "image/png",
 				},
 			},
 			IsError: false,
@@ -261,4 +337,18 @@ func getDeviceDetails(deviceName string) (string, string, string, string, string
 	arch := strings.TrimSpace(string(archOutput))
 
 	return name, androidVersion, sdkLevel, model, arch, nil
+}
+
+func captureScreenshot(deviceName string) (string, error) {
+	// Use exec-out to stream screenshot data directly from device to PC
+	// This avoids creating temporary files on the Android device
+	screenshotCmd := execCommand("adb", "-s", deviceName, "exec-out", "screencap", "-p")
+	imageData, err := screenshotCmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to capture screenshot from device %s: %w", deviceName, err)
+	}
+
+	// Encode to base64
+	base64Data := base64.StdEncoding.EncodeToString(imageData)
+	return base64Data, nil
 }

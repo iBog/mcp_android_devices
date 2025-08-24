@@ -6,9 +6,12 @@ A Model Context Protocol (MCP) server that provides information about connected 
 
 - Lists all connected Android devices and emulators
 - Provides detailed device information (name, model, architecture, Android version, SDK level)
+- Captures screenshots from Android devices and emulators
+- Returns screenshots as Base64-encoded PNG images
 - Follows the official MCP protocol specification
 - Uses JSON-RPC 2.0 over stdio transport
 - Proper error handling and protocol compliance
+- Cross-platform support (Windows, macOS, Linux)
 
 ## How to use
 
@@ -23,11 +26,13 @@ go build
 #### Cursor IDE - Step by Step Installation
 
 1. **Build the server executable:**
+
    ```bash
    go build
    ```
 
 2. **Copy the executable to a permanent location:**
+
    ```bash
    # Windows
    mkdir C:\tools\mcp_servers
@@ -48,8 +53,9 @@ go build
    - Click "Edit in settings.json" or find the MCP configuration area
 
 5. **Add the MCP server configuration:**
-   
+
    **For Windows:**
+
    ```json
    {
        "mcp": {
@@ -61,8 +67,9 @@ go build
        }
    }
    ```
-   
+
    **For macOS/Linux:**
+
    ```json
    {
        "mcp": {
@@ -76,6 +83,7 @@ go build
    ```
 
 6. **Alternative: Use relative path (if keeping in project folder):**
+
    ```json
    {
        "mcp": {
@@ -94,7 +102,8 @@ go build
    - Open Cursor IDE
    - Look for MCP status indicator in the status bar
    - Try asking: "List my Android devices" or "Show connected Android emulators"
-   - The AI should now be able to use the Android devices tool
+   - Try asking: "Take a screenshot of my Android device" or "Capture the screen from my emulator"
+   - The AI should now be able to use both the device listing and screenshot tools
 
 #### Troubleshooting Cursor IDE Integration
 
@@ -119,6 +128,12 @@ go build
    - Check for syntax errors in settings.json
    - Look at Cursor IDE logs/console for error messages
 
+5. **Screenshot functionality not working:**
+   - Ensure your Android device/emulator screen is unlocked
+   - Verify the device is properly connected with `adb devices`
+   - Check that the device has sufficient storage space
+   - Some devices may require enabling "USB Debugging" and "Disable permission monitoring"
+
 #### Claude Desktop
 
 Add to your `claude_desktop_config.json`:
@@ -138,23 +153,39 @@ Add to your `claude_desktop_config.json`:
 The server communicates via JSON-RPC 2.0 over stdin/stdout. Here are some test examples:
 
 1. **Initialize the connection:**
+
    ```bash
    echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}' | ./mcp_android_devices
    ```
 
 2. **List available tools:**
+
    ```bash
    echo '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | ./mcp_android_devices
    ```
 
 3. **Call the get_android_devices tool:**
+
    ```bash
    echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_android_devices","arguments":{}}}' | ./mcp_android_devices
+   ```
+
+4. **Capture a screenshot from an Android device:**
+
+   ```bash
+   echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_android_screen","arguments":{"device":"emulator-5554"}}}' | ./mcp_android_devices
+   ```
+
+   Or capture from the first available device:
+
+   ```bash
+   echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_android_screen","arguments":{}}}' | ./mcp_android_devices
    ```
 
 ## MCP Protocol Examples
 
 ### Initialize Response
+
 ```json
 {
     "jsonrpc": "2.0",
@@ -175,6 +206,7 @@ The server communicates via JSON-RPC 2.0 over stdin/stdout. Here are some test e
 ```
 
 ### Tools List Response
+
 ```json
 {
     "jsonrpc": "2.0",
@@ -188,13 +220,27 @@ The server communicates via JSON-RPC 2.0 over stdin/stdout. Here are some test e
                     "type": "object",
                     "properties": {}
                 }
+            },
+            {
+                "name": "get_android_screen",
+                "description": "Capture a screenshot from an Android device",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "device": {
+                            "type": "string",
+                            "description": "Device name (e.g., 'emulator-5554'). If not provided, uses the first available device."
+                        }
+                    }
+                }
             }
         ]
     }
 }
 ```
 
-### Tool Call Response
+### Device List Tool Call Response
+
 ```json
 {
     "jsonrpc": "2.0",
@@ -210,6 +256,27 @@ The server communicates via JSON-RPC 2.0 over stdin/stdout. Here are some test e
     }
 }
 ```
+
+### Screenshot Tool Call Response
+
+```json
+{
+    "jsonrpc": "2.0",
+    "id": 4,
+    "result": {
+        "content": [
+            {
+                "type": "image",
+                "data": "iVBORw0KGgoAAAANSUhEUgAAAoAAAAHgCAYAAAA10dzkAAA...(base64 encoded PNG data)...==",
+                "mimeType": "image/png"
+            }
+        ],
+        "isError": false
+    }
+}
+```
+
+**Note:** The `data` field contains the complete Base64-encoded PNG image. The actual response will contain the full Base64 string, which has been truncated in this example for readability.
 
 ## Requirements
 
