@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -302,9 +303,27 @@ func TestFindEmulatorProcess(t *testing.T) {
 		t.Skip("No devices found, skipping test.")
 	}
 
-	psOutput, err := exec.Command("ps", "aux").Output()
-	if err != nil {
-		t.Fatalf("Failed to run 'ps aux': %v", err)
+	// Get process list using platform-specific commands
+	var psOutput []byte
+	switch runtime.GOOS {
+	case "windows":
+		// Use tasklist on Windows
+		psOutput, err = exec.Command("tasklist", "/fo", "csv").Output()
+		if err != nil {
+			t.Fatalf("Failed to run 'tasklist': %v", err)
+		}
+	case "linux", "darwin":
+		// Use ps on Unix-like systems (Linux, macOS)
+		psOutput, err = exec.Command("ps", "aux").Output()
+		if err != nil {
+			t.Fatalf("Failed to run 'ps aux': %v", err)
+		}
+	default:
+		// Fallback for other Unix-like systems
+		psOutput, err = exec.Command("ps", "aux").Output()
+		if err != nil {
+			t.Fatalf("Failed to run 'ps aux' on %s: %v", runtime.GOOS, err)
+		}
 	}
 
 	foundProcess := false
@@ -315,7 +334,8 @@ func TestFindEmulatorProcess(t *testing.T) {
 			avdArg := "-avd " + avdName
 			lines := strings.Split(string(psOutput), "\n")
 			for _, line := range lines {
-				if strings.Contains(line, avdArg) {
+				// Check for emulator process with AVD name
+				if strings.Contains(line, "emulator") && strings.Contains(line, avdArg) {
 					t.Logf("Found process for AVD: %s", device.Name)
 					t.Logf("Process details: %s", line)
 					foundProcess = true
