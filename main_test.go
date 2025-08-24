@@ -291,3 +291,60 @@ func TestHelperProcess(t *testing.T) {
 	}
 	os.Exit(0)
 }
+
+func TestFindEmulatorProcess(t *testing.T) {
+	devices, err := getDeviceList()
+	if err != nil {
+		t.Fatalf("Failed to get device list: %v", err)
+	}
+
+	if len(devices) == 0 {
+		t.Skip("No devices found, skipping test.")
+	}
+
+	psOutput, err := exec.Command("ps", "aux").Output()
+	if err != nil {
+		t.Fatalf("Failed to run 'ps aux': %v", err)
+	}
+
+	foundProcess := false
+	for _, device := range devices {
+		// We are looking for emulator processes, which have a non-empty model
+		if device.Model != "" {
+			avdName := strings.ReplaceAll(device.Name, " ", "_")
+			avdArg := "-avd " + avdName
+			lines := strings.Split(string(psOutput), "\n")
+			for _, line := range lines {
+				if strings.Contains(line, avdArg) {
+					t.Logf("Found process for AVD: %s", device.Name)
+					t.Logf("Process details: %s", line)
+					foundProcess = true
+
+					// Take a screenshot
+					screenshotPath := "/sdcard/screenshot.png"
+					screenshotCmd := exec.Command("adb", "-s", device.Device, "shell", "screencap", screenshotPath)
+					if err := screenshotCmd.Run(); err != nil {
+						t.Logf("Failed to take screenshot: %v", err)
+					} else {
+						// Pull the screenshot from the device
+						pullCmd := exec.Command("adb", "-s", device.Device, "pull", screenshotPath)
+						if err := pullCmd.Run(); err != nil {
+							t.Logf("Failed to pull screenshot: %v", err)
+						} else {
+							t.Logf("Screenshot saved to screenshot.png")
+						}
+						// Clean up the screenshot from the device
+						rmCmd := exec.Command("adb", "-s", device.Device, "shell", "rm", screenshotPath)
+						if err := rmCmd.Run(); err != nil {
+							t.Logf("Failed to remove screenshot from device: %v", err)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if !foundProcess {
+		t.Error("Could not find a running emulator process.")
+	}
+}
